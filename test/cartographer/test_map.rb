@@ -4,7 +4,7 @@ class TestMap < ActiveSupport::TestCase
   include Cartographer
   
   test "Check default options" do
-    assert Map.default_options, {
+    assert Map.defaultOptions, {
       :identifier => 'cartographer',
       :div_id => 'map',
       :controls => :default,
