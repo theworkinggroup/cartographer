@@ -1,6 +1,19 @@
-= cartographer
+==Cartographer
 
-Description goes here.
+Provides easy Google Maps integration, geo-location and fast marker lookup and clustering.
+
+=Credits
+
+Georges Gabereau TheWorkingGroup, Inc.
+
+Vincenty distance code taken from: http://github.com/retoo/rvincenty
+
+Inspiration:
+GeoKit
+http://geokit.rubyforge.org
+
+YM4R_gm
+http://ym4r.rubyforge.org
 
 == Note on Patches/Pull Requests
  

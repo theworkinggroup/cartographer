@@ -1,0 +1,5 @@
+Usage:
+
+  script/generate cartographer
+
+This will copy all the necessary files to your app's various directories.

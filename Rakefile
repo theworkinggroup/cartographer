@@ -5,9 +5,9 @@ begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
     gem.name = "cartographer"
-    gem.summary = %Q{TODO: one-line summary of your gem}
-    gem.description = %Q{TODO: longer description of your gem}
-    gem.email = "georges@theworkinggroup.ca"
+    gem.summary = %Q{Provides easy Google Maps integration, geo-location and fast marker lookup and clustering.}
+    gem.description = %Q{Provides easy Google Maps integration, geo-location and fast marker lookup and clustering.}
+    gem.email = "georges@twg.ca"
     gem.homepage = "http://github.com/multiplegeorges/cartographer"
     gem.authors = ["Georges Gabereau"]
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
