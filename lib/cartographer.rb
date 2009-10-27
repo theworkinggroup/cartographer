@@ -1,11 +1,11 @@
 module Cartographer
-  autoload(:Map, 'cartographer/map')
   autoload(:Location, 'cartographer/location')
+  autoload(:Map, 'cartographer/map')
+  autoload(:SquareCode, 'cartographer/square_code')
   
   VERSION = "0.1"
 
   class << self
-
     def log message
       logger.info("[cartographer] #{message}") if logging?
     end
