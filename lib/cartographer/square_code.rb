@@ -1,15 +1,27 @@
 module Cartographer
   class SquareCode
+    class OutOFBounds < Exception
+    end
+    
     # == Constants ============================================================
   
-    LOG2 = Math.log(2)
-    LAT_BASE_SCALE = (2 << 32) / 360
-    LONG_BASE_SCALE = (2 << 32) / 180
+    MAXIMUM_RESOLUTION = 31
     
-    BITMASKS = (0..29).collect do |i|
-      1 << i
-    end
+    ACCEPTABLE_ENCODING_RANGE = (0..1 << MAXIMUM_RESOLUTION)
   
+    LOG2 = Math.log(2)
+    LAT_BASE_SCALE = (1 << MAXIMUM_RESOLUTION).to_f / 180
+    LONG_BASE_SCALE = -1 * (1 << MAXIMUM_RESOLUTION).to_f / 360
+    
+    BITMASKS = (0..MAXIMUM_RESOLUTION).collect do |i|
+      1 << i
+    end.freeze
+
+    OFFSET_BITMASK = [
+      0xAAAAAAAAAAAAAAAA,
+      0x5555555555555555
+    ].freeze
+
     # == Properties ===========================================================
 
     attr_accessor :latitude, :longitude
@@ -17,34 +29,30 @@ module Cartographer
 
     # == Class Methods ========================================================
   
-    def self.merge(a, b, zoom = 60)
+    def self.merge(a, b, zoom = MAXIMUM_RESOLUTION * 2)
       # Engage the MSB in the result to ensure no conflict with regions
       # at a lower precision.
       result = (1 << zoom)
 
       # Interleave lat and long on a bit-by-bit basis
       BITMASKS[0, (zoom / 2)].each_with_index do |m, o|
-        result |= (a & m) << o
-        result |= (b & m) << (o + 1)
+        result |= (a & m) << (o + 1)
+        result |= (b & m) << o
       end
 
       result
     end
   
     def self.encoding_size(value)
-      i = 30
+      bit_length = value.to_s(2).length
+      
+      # In format Bxy[xy[..]] there must be an odd number of bits to be
+      # a valid encoding.
 
-      while (i > 0)
-        if (value & (1 << (i * 2)) != 0)
-          return i
-        end
-        i -= 1
-      end
-    
-      nil
+      (bit_length % 2) == 1 ? (bit_length / 2) : nil
     end
   
-    def self.split(value, zoom = 60)
+    def self.split(value, zoom = MAXIMUM_RESOLUTION * 2)
       base = encoding_size(value)
     
       lat = 0
@@ -60,36 +68,32 @@ module Cartographer
       base.times do |o|
         pmask = (1 << (o * 2))
       
-        lat |= (value & pmask) >> o
-        long |= (ovalue & pmask) >> o
+        lat |= (ovalue & pmask) >> o
+        long |= (value & pmask) >> o
       end
 
       [ lat << offset, long << offset ]
     end
 
     def self.encode(lat, long, level = nil)
-      # level refers to "zoom level" where 0 is no zoom, 29 is maximum
-      # although anything beyond 25 is virtually useless.
-
-      # Encoding is done to the millionth of a degree, which for all
-      # practical purposes should be sufficient since that is roughly
-      # equivalent to a 3cm increment.
       enc_lat = ((lat.to_f + 90.0) * LAT_BASE_SCALE).to_i
-      enc_long = ((long.to_f + 180.0) * LONG_BASE_SCALE).to_i
+      enc_long = ((long.to_f - 180.0) * LONG_BASE_SCALE).to_i
+      
+      unless (ACCEPTABLE_ENCODING_RANGE.include?(enc_lat))
+        raise OutOFBounds, "Latitude %.6f is not in the range -90.0 to 90.0" % lat
+      end
 
-      # 30 bits of precision handles numbers in the range 0..536,870,912
-      # since what is required is a minimum of 0..360,000,000
+      unless (ACCEPTABLE_ENCODING_RANGE.include?(enc_long))
+        raise OutOFBounds, "Longitude %.6f is not in the range -180.0 to 180.0" % long
+      end
 
-      # NOTES:
-      #  * 30 bits represents a resolution of 0.033m
-      #  * 15 bits represents a resolution of 363m
-      level ||= 30
+      level ||= MAXIMUM_RESOLUTION
 
       result = merge(enc_lat, enc_long)
 
       # Reduce precision according to level parameter
       if (level and level > 0)
-        result >>= ((30 - level) * 2)
+        result >>= ((MAXIMUM_RESOLUTION - level) * 2)
       end
 
       result
@@ -100,7 +104,7 @@ module Cartographer
 
       [
         lat.to_f / LAT_BASE_SCALE - 90.0,
-        long.to_f / LONG_BASE_SCALE - 180.0
+        long.to_f / LONG_BASE_SCALE + 180.0
       ]
     end
   
@@ -148,13 +152,7 @@ module Cartographer
     end
   
     def self.increment(value, offset = 0, increment = 1)
-      mask =
-        case (offset)
-        when 0
-          0xAAAAAAAAAAAAAAA
-        when 1
-          0x555555555555555
-        end
+      mask = OFFSET_BITMASK[offset]
 
       ((value | mask) + increment) & ~mask | (value & mask)
     end
@@ -180,21 +178,23 @@ module Cartographer
   
     # == Instance Methods =====================================================
   
-    def initialize(encoded_or_lat, long = nil)
-      if (long)
-        # Lat/Long pair
-        @latitude = encoded_or_lat
-        @longitude = long
+    def initialize(*args)
+      case (args.length)
+      when 1
+        @encoded = args.first.to_i
+        
+        (@latitude, @longitude) = self.class.decode(@encoded)
+      when 2
+        (@latitude, @longitude) = args
       
         @encoded = self.class.encode(@latitude, @longitude)
       else
-        # Binary representation
-        @encoded = encoded_or_lat
+        # Exception
       end
     end
   
-    def to_i(level = 0)
-      (level > 0) ? @encoded >> (level * 2) : @encoded
+    def to_i(level = nil)
+      level ? @encoded >> ((MAXIMUM_RESOLUTION - level) * 2) : @encoded
     end
   
     def to_a
