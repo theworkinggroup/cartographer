@@ -1,6 +1,7 @@
 require 'cartographer/geocoder'
 require 'cartographer/location'
 require 'cartographer/map'
+require 'cartographer/square_code'
 
 module Cartographer
  
@@ -69,5 +70,5 @@ module Cartographer
     class APIKeyNotFound < StandardError; end
     class InvalidLocation < StandardError; end
   end
-  
+
 end
