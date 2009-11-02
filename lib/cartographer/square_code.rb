@@ -1,5 +1,11 @@
 module Cartographer
   class SquareCode
+    class InvalidArguments < Exception
+    end
+
+    class InvalidEncoding < Exception
+    end
+    
     class OutOFBounds < Exception
     end
     
@@ -49,7 +55,11 @@ module Cartographer
       # In format Bxy[xy[..]] there must be an odd number of bits to be
       # a valid encoding.
 
-      (bit_length % 2) == 1 ? (bit_length / 2) : nil
+      unless ((bit_length % 2) == 1)
+        raise InvalidEncoding, "SquareCode is of length #{bit_length} and cannot be decoded"
+      end
+      
+      bit_length / 2
     end
   
     def self.split(value, zoom = MAXIMUM_RESOLUTION * 2)
@@ -189,7 +199,7 @@ module Cartographer
       
         @encoded = self.class.encode(@latitude, @longitude)
       else
-        # Exception
+        raise InvalidArguments, "Invalid number of arguments to #{self.class}.new"
       end
     end
   
