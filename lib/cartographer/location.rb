@@ -1,12 +1,8 @@
-# encoding: utf-8
 module Cartographer
   # The Location class represents a point on the Earth.
   class Location
-    require 'net/http'
-    
     # From Wikipedia:
       # The nautical mile is a unit of length corresponding approximately to one minute of arc of latitude along any meridian.
-      
     # Useful conversions:
     # 1 Arc Minute = 1 Nautical Mile
     # 1 Nautical Mile = 1.15078 Miles
@@ -19,6 +15,7 @@ module Cartographer
     # Earth Equatorial Radius: 6 378 137 Metres
     # Earth Polar Radius: 6 356 752.3 Metres
     # Based on these, average radius: 6 367 444.5 Metres
+    
     EARTH_RADIUS = 6367444.5
     EARTH_CIRCUMFERENCE = 2 * Math::PI * EARTH_RADIUS
     
@@ -27,53 +24,31 @@ module Cartographer
     M_IN_KM = 1000
     M_IN_MI = 1609.344
     
-    GEOCODING_HOST = 'maps.google.com'
-    GEOCODING_PATH = '/maps/geo'
+    attr_accessor :center, :box, :lat, :lng, :full_address, :street_address, :state, :country, :accuracy
     
-    def self.geolocate(address, options = { })
-      output = options[:output] || 'json'
-      oe = options[:encoding] || 'utf8'
-      ll = options[:center]
-      unless options[:distance].blank? && options[:center].blank?
-        spn = m_to_d(options[:distance])
-      end
-      gl = options[:cc]
-      
-      get_parameters = {
-        :q => address,
-        :key => Map.apiKey,
-        :sensor => false,
-        :output => output,
-        :oe => oe,
-        :ll => ll,
-        :spn => spn,
-        :gl => gl
-      }.reject!{|k,v| v == nil}
-      
-      response = Net::HTTP.get(GEOCODING_HOST, GEOCODING_PATH + '?' + get_parameters.collect{|k,v| "#{k}=#{Rack::Utils.escape(v)}"}.join('&') )
-      raise ActiveSupport::JSON.decode(response)
-      
-    end
-    
-    def self.new_from_response
-      
-    end
+    alias_method :latitude, :lat
+    alias_method :longitude, :lng
     
     def self.dms_to_decimal(d, m, s)
       d + m/60.0 + s/3600.0
     end
     
-    def initialize(options = {})
-      @latitude = options[:lat]
-      @longitude = options[:lng]
+    def initialize(options = {}, &block)
+      if block_given?
+        yield self
+      else
+        @lat = options[:lat]
+        @lng = options[:lng]
+      end
     end
     
-    def lat
-      @latitude
+    def ==(other)
+      @lat == other.lat && @lng == other.lng
     end
     
-    def lng
-      @longitude
+    def center=(coords)
+      @lat = coords[0]
+      @lng = coords[1]
     end
     
     def distance_to(location, options = {})
@@ -101,7 +76,7 @@ module Cartographer
     
     # Adapted from GeoRuby. I lifted this because I didn't think 
     # it warranted adding a gem dependency to Cartographer. Thanks GeoRuby!
-    # Returns distance in metres.
+    # Returns distance in metres. Assumes spherical Earth.
     def haversine_distance(point)
       radlat_from = lat * DEGREE_TO_RADIAN
       radlat_to = point.lat * DEGREE_TO_RADIAN
@@ -115,7 +90,7 @@ module Cartographer
     end
     
     # Adapted from GeoRuby.
-    # Returns distance in metres.
+    # Returns distance in metres. Assumes perfect ellipsoid Earth.
     def vincenty_distance(point, a = 6378137.0, b = 6356752.3142)
       f = (a-b) / a
       l = (point.lng - lng) * DEGREE_TO_RADIAN

@@ -1,32 +1,28 @@
-# encoding: utf-8
 module Cartographer
   # The Map class represents a Google Map that is to be displayed in a view.
   class Map
     
+    #require 'cartographer/geometry/point'
+    include Cartographer::Geometry
+    
     API_VERSION = 2
+    
+    attr_accessor :identifier, :div_id, :controls, :center, :zoom
     
     def self.defaultOptions
       @default_options ||= {
         :identifier => 'cartographer',
         :div_id => 'map',
         :controls => :default,
+        :center => [43.657154, -79.425124], # Toronto, the center of the Universe
         :zoom => 9
       }
-    end
-    
-    def self.apiKey(env = RAILS_ENV)
-      unless File.exist?(RAILS_ROOT + '/config/cartographer.yml')
-        raise Exceptions::ConfigFileNotFound.new("File RAILS_ROOT/config/cartographer.yml not found") 
-      end
-      key = YAML.load_file(RAILS_ROOT + '/config/cartographer.yml')[env]
-      #log "Got API key: #{key}"
-      key
     end
     
     def self.to_js
       output = [ ]
       output << "$(document).ready(function(){"
-        output << "Cartographer.apikey = '#{self.apiKey}';"
+        output << "Cartographer.apikey = '#{Cartographer.apiKey(:google)}';"
         output << "Cartographer.apiversion = #{API_VERSION};"
         output << "Cartographer.loadAPIs();"
       output << "});"
@@ -36,11 +32,11 @@ module Cartographer
     def initialize(options = {})
       options = self.class.defaultOptions.merge(options)
       
-      @identifier = options[:identifier]
-      @div_id = options[:div_id]
-      @controls = options[:controls]
-      @center = options[:center]
-      @zoom = options[:zoom]
+      self.identifier = options[:identifier]
+      self.div_id = options[:div_id]
+      self.controls = options[:controls]
+      self.center = options[:center]
+      self.zoom = options[:zoom]
     end
     
     def center=(location)
@@ -48,13 +44,14 @@ module Cartographer
       when Location
         @center = location
       when Array
-        @center = Location.new(location[0], location[1])
+        @center = Location.new(:lat => location[0], :lng => location[1])
       when Hash
-        @center = Location.new(location[:lat], location[:lng])
+        @center = Location.new(:lat => location[:lat], :lng => location[:lng])
+      when Point
+        @center = Location.new(:lat => location.lat, :lng => location.lng)
       else 
         raise Exceptions::InvalidLocation.new("The location could not be determined from: #{location.inspect}")
       end
-      #log "Center set to: #{@center}"
     end
     
     def to_js
@@ -64,7 +61,7 @@ module Cartographer
         output << "#{@identifier}.initialize(function(){"
           output << "#{@identifier}.map.setCenter(#{@center.to_js});"
           output << "#{@identifier}.map.setZoom(#{@zoom});"
-          output << "#{@identifier}.map.setUIToDefault();" #fix this so that you can change control types.
+          output << "#{@identifier}.map.setUIToDefault();" #enhance this so that you can change control types.
         output << "});"
       output << "});"
       "<script type='text/javascript'>\n" + output.join("\n") + "\n</script>"

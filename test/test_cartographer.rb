@@ -1,7 +1,9 @@
 require 'helper'
 
-class TestCartographer < Test::Unit::TestCase
-  def test_something_for_real
-    flunk "hey buddy, you should probably rename this file and start testing for real"
+class TestCartographer < ActiveSupport::TestCase
+  include Cartographer
+  test "Fetching API keys" do
+    assert_equal Cartographer.apiKey(:google), 'thisismyfakegoogletestingkey'
+    assert_equal Cartographer.apiKey(:yahoo), 'thisismyfakeyahootestingkey'
   end
 end
