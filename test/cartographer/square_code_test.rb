@@ -1,7 +1,7 @@
-require File.expand_path(File.join('..', 'helper'), File.dirname(__FILE__))
+require 'helper'
 
-class TestMap < ActiveSupport::TestCase
-  def test_encoding
+class TestGeocoder < ActiveSupport::TestCase
+  test "Encoding coordinates" do
     [
       [ -89.9999, -179.9999 ],
       [ 89.9999, 179.9999 ],
@@ -19,7 +19,7 @@ class TestMap < ActiveSupport::TestCase
     end
   end
 
-  def test_baseline
+  test "Baseline test" do
     [
       [ 0.0, 0.0, 0b111000000000000000000000000000000000000000000000000000000000000 ]
     ].each do |lat_long|
@@ -29,7 +29,7 @@ class TestMap < ActiveSupport::TestCase
     end
   end
   
-  def test_quadrants
+  test "Quadrants" do
     [
       [ -45.0, 90.0, 0b100 ],
       [ -45.0, -90.0, 0b101 ],
