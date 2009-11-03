@@ -8,7 +8,7 @@ begin
     gem.summary = %Q{Provides easy Google Maps integration, geo-location and fast marker lookup and clustering.}
     gem.description = %Q{Provides easy Google Maps integration, geo-location and fast marker lookup and clustering.}
     gem.email = "georges@twg.ca"
-    gem.homepage = "http://github.com/multiplegeorges/cartographer"
+    gem.homepage = "http://github.com/theworkinggroup/cartographer"
     gem.authors = ["Georges Gabereau"]
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end

@@ -1,9 +1,9 @@
 class <%= migration_name %> < ActiveRecord::Migration
   def self.up
-    
+    add_column :cartographer_locations, :<%= class_name.underscore.camelize.tableize %>_id, :integer
   end
   
   def self.down
-    
+    remove_column :cartographer_locations, :<%= class_name.underscore.camelize.tableize %>_id
   end
 end

@@ -62,6 +62,10 @@ module Cartographer
       "new GLatLng(#{@latitude}, #{@longitude})"
     end
     
+    def geolocated?
+      !(lat.blank? && lng.blank?)
+    end
+    
     protected
     
     # metres to degrees on a sphere with the earth's radius.
