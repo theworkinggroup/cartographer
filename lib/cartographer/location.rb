@@ -24,13 +24,23 @@ module Cartographer
     M_IN_KM = 1000
     M_IN_MI = 1609.344
     
-    attr_accessor :center, :box, :lat, :lng, :full_address, :street_address, :state, :country, :accuracy
+    attr_accessor :center, :box, :lat, :lng, :full_address, :street_address, :postal_code, :city, :state, :country, :country_code, :accuracy
     
     alias_method :latitude, :lat
     alias_method :longitude, :lng
     
     def self.dms_to_decimal(d, m, s)
       d + m/60.0 + s/3600.0
+    end
+    
+    # metres to degrees on a sphere with the earth's radius.
+    def self.m_to_d(m)
+      (360.0*m)/EARTH_CIRCUMFERENCE
+    end
+    
+    # degrees to metres on a sphere with the earth's radius.
+    def self.d_to_m(d)
+      (EARTH_CIRCUMFERENCE/360)*d
     end
     
     def initialize(options = {}, &block)
@@ -58,8 +68,18 @@ module Cartographer
       return d
     end
     
+    def [](index)
+      return @lat if index == 0
+      return @lng if index == 1
+      nil
+    end
+    
     def to_js
-      "new GLatLng(#{@latitude}, #{@longitude})"
+      "new GLatLng(#{@lat}, #{@lng})"
+    end
+    
+    def to_a
+      [@lat, @lng]
     end
     
     def geolocated?
@@ -67,16 +87,6 @@ module Cartographer
     end
     
     protected
-    
-    # metres to degrees on a sphere with the earth's radius.
-    def m_to_d(m)
-      (360.0*m)/EARTH_CIRCUMFERENCE
-    end
-    
-    # degrees to metres on a sphere with the earth's radius.
-    def d_to_m(d)
-      (EARTH_CIRCUMFERENCE/360)*d
-    end
     
     # Adapted from GeoRuby. I lifted this because I didn't think 
     # it warranted adding a gem dependency to Cartographer. Thanks GeoRuby!

@@ -8,6 +8,7 @@ module Cartographer
       require 'active_support'
       
       require 'cartographer/geometry/box'
+      require 'cartographer/location'
       
       GEOCODING_HOST = 'maps.google.com'
       GEOCODING_PATH = '/maps/geo'
@@ -30,9 +31,9 @@ module Cartographer
         oe = options[:encoding] || 'utf8'
         ll = options[:center]
         unless options[:distance].blank? && options[:center].blank?
-          spn = m_to_d(options[:distance])
+          spn = Location.m_to_d(options[:distance].to_f)
         end
-        gl = options[:cc]
+        gl = options[:country]
   
         get_parameters = {
           :q => address,
@@ -41,11 +42,13 @@ module Cartographer
           :output => output,
           :oe => oe,
           :ll => ll,
-          :spn => spn,
+          :spn => "#{spn.to_s},#{spn.to_s}",
           :gl => gl
         }.reject!{|k,v| v == nil}
         
-        response = Net::HTTP.get(GEOCODING_HOST, GEOCODING_PATH + '?' + get_parameters.collect{|k,v| "#{k}=#{CGI::escape(v)}"}.join('&') )
+        request = GEOCODING_PATH + '?' + get_parameters.collect{|k,v| "#{k}=#{CGI::escape(v)}"}.join('&')
+        Cartographer.log(request)
+        response = Net::HTTP.get(GEOCODING_HOST, request)
         response = ActiveSupport::JSON.decode(response)
         
         if response["Status"]["code"] == 200
@@ -53,12 +56,15 @@ module Cartographer
             Location.new do |l|
               l.full_address = Cartographer.dig_hash(p, %w[address])
               l.street_address = Cartographer.dig_hash(p, %w[AddressDetails Country AdministrativeArea SubAdministrativeArea Locality Thoroughfare ThoroughfareName])
+              l.postal_code = Cartographer.dig_hash(p, %w[AddressDetails Country AdministrativeArea SubAdministrativeArea Locality PostalCode PostalCodeNumber])
+              l.city = Cartographer.dig_hash(p, %w[AddressDetails Country AdministrativeArea SubAdministrativeArea Locality LocalityName])
               l.state = Cartographer.dig_hash(p, %w[AddressDetails Country AdministrativeArea AdministrativeAreaName])
               l.country = Cartographer.dig_hash(p, %w[AddressDetails Country CountryName])
+              l.country_code = Cartographer.dig_hash(p, %w[AddressDetails Country CountryNameCode])
               l.accuracy = ACCURACIES[Cartographer.dig_hash(p, %w[AddressDetails Accuracy])] if Cartographer.dig_hash(p, %w[AddressDetails Accuracy])
-              l.lat = Cartographer.dig_hash(p, %w[Point coordinates])[0]
-              l.lng = Cartographer.dig_hash(p, %w[Point coordinates])[1]
-              box = Box.new(:south => Cartographer.dig_hash(p, %w[ExtendedData LatLonBox south]),
+              l.lat = Cartographer.dig_hash(p, %w[Point coordinates])[1]
+              l.lng = Cartographer.dig_hash(p, %w[Point coordinates])[0]
+              box = Cartographer::Geometry::Box.new(:south => Cartographer.dig_hash(p, %w[ExtendedData LatLonBox south]),
                             :north => Cartographer.dig_hash(p, %w[ExtendedData LatLonBox north]),
                             :east => Cartographer.dig_hash(p, %w[ExtendedData LatLonBox east]),
                             :west => Cartographer.dig_hash(p, %w[ExtendedData LatLonBox west]) )

@@ -16,5 +16,9 @@ module Cartographer
       end
     end
     
+    def self.locate(address, options = { })
+      self.new.locate(address, options = { })
+    end
+    
   end
 end

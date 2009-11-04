@@ -7,7 +7,7 @@ module Cartographer
     
     API_VERSION = 2
     
-    attr_accessor :identifier, :div_id, :controls, :center, :zoom
+    attr_accessor :identifier, :div_id, :controls, :center, :zoom, :events
     
     def self.defaultOptions
       @default_options ||= {
@@ -15,28 +15,31 @@ module Cartographer
         :div_id => 'map',
         :controls => :default,
         :center => [43.657154, -79.425124], # Toronto, the center of the Universe
-        :zoom => 9
+        :zoom => 9,
+        :events => { }
       }
     end
     
     def self.to_js
-      output = [ ]
-      output << "$(document).ready(function(){"
-        output << "Cartographer.apikey = '#{Cartographer.apiKey(:google)}';"
-        output << "Cartographer.apiversion = #{API_VERSION};"
-        output << "Cartographer.loadAPIs();"
-      output << "});"
-      "<script type='text/javascript'>\n" + output.join("\n") + "\n</script>"
+      output = [
+      "$(document).ready(function(){",
+        "Cartographer.apikey = '#{Cartographer.apiKey(:google)}';",
+        "Cartographer.apiversion = #{API_VERSION};",
+        "Cartographer.loadAPIs();",
+      "});" ]
+      
+      "<script src='/javascripts/cartographer/cartographer.js' type='text/javascript'></script><script type='text/javascript'>\n" + output.join("\n") + "\n</script>"
     end
     
     def initialize(options = {})
-      options = self.class.defaultOptions.merge(options)
+      options = self.class.defaultOptions.dup.merge(options)
       
-      self.identifier = options[:identifier]
-      self.div_id = options[:div_id]
-      self.controls = options[:controls]
-      self.center = options[:center]
-      self.zoom = options[:zoom]
+      @identifier = options[:identifier]
+      @div_id = options[:div_id]
+      @controls = options[:controls]
+      @center = options[:center]
+      @zoom = options[:zoom]
+      @events = { }
     end
     
     def center=(location)
@@ -49,22 +52,38 @@ module Cartographer
         @center = Location.new(:lat => location[:lat], :lng => location[:lng])
       when Point
         @center = Location.new(:lat => location.lat, :lng => location.lng)
+      when String
+        @center = location #to support putting in a Javascript function.
       else 
         raise Exceptions::InvalidLocation.new("The location could not be determined from: #{location.inspect}")
       end
     end
     
+    def register_event(event, function)
+      @events[event] = [] if @events[event].blank?
+      @events[event] << function
+    end
+    
     def to_js
-      output = [ ]
-      output << "var #{@identifier} = new Cartographer('#{@div_id}');"
-      output << "$(window).bind('mapsLoaded', function(){"
-        output << "#{@identifier}.initialize(function(){"
-          output << "#{@identifier}.map.setCenter(#{@center.to_js});"
-          output << "#{@identifier}.map.setZoom(#{@zoom});"
-          output << "#{@identifier}.map.setUIToDefault();" #enhance this so that you can change control types.
-        output << "});"
-      output << "});"
-      "<script type='text/javascript'>\n" + output.join("\n") + "\n</script>"
+      load_events = @events[:load].collect{|function| "GEvent.addListener(#{@identifier}.map, 'load', #{function.to_s});" }
+      other_events = @events.collect do |event|
+        if event[0] != :load
+          event[1].collect do |function|
+            "GEvent.addListener(#{@identifier}.map, '#{event[0]}', #{function.to_s});"
+          end
+        end
+      end
+      output = [
+      "var #{@identifier} = new Cartographer('#{@div_id}');",
+      "$(window).bind('mapsLoaded', function(){",
+        "#{@identifier}.initialize(function(){",
+          load_events,
+          "#{@identifier}.map.setCenter(#{@center.is_a?(String) ? @center : @center.to_js}, #{@zoom});",
+          "#{@identifier}.map.setUIToDefault();", #enhance this so that you can change control types.
+          other_events,
+        "});",
+      "});" ]
+      "<script type='text/javascript'>\n" + output.flatten.join("\n") + "\n</script>"
     end
   end
   

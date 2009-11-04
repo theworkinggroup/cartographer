@@ -3,10 +3,10 @@ require 'cartographer/location'
 require 'cartographer/map'
 require 'cartographer/square_code'
 
+include Cartographer
+
 module Cartographer
- 
-  VERSION = "0.1"
-  
+   
   def self.log message
     logger.info("[cartographer] #{message}") if logging?
   end
@@ -16,16 +16,14 @@ module Cartographer
   end
   
   def self.logging? #:nodoc:
-    options[:log]
+    rails_env == 'development'
   end
   
-  def self.apiKey(provider, env = Cartographer.rails_env)
-    provider = provider.to_sym
-    env = env.to_sym
-    if Cartographer.config.api_keys[provider][env].blank?
+  def self.apiKey(provider = Cartographer.config.default_provider, env = Cartographer.rails_env)
+    if Cartographer.config.api_keys[provider.to_sym][env.to_sym].blank?
       raise Exceptions::APIKeyNotFound.new("Requested API key not found!") 
     end
-    key = Cartographer.config.api_keys[provider][env]
+    key = Cartographer.config.api_keys[provider.to_sym][env.to_sym]
   end
   
   #for gem testing when there is no Rails around.
